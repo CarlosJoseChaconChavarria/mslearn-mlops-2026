@@ -15,7 +15,7 @@ echo "Suffix: $suffix"
 # Set the necessary variables
 RESOURCE_GROUP="rg-ai300-l${suffix}"
 RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
-REGIONS=("eastus" "westus" "centralus" "northeurope" "westeurope")
+REGIONS=("eastus" "westus")
 RANDOM_REGION=${REGIONS[$RANDOM % ${#REGIONS[@]}]}
 WORKSPACE_NAME="mlw-ai300-l${suffix}"
 COMPUTE_INSTANCE="ci${suffix}"
@@ -36,11 +36,11 @@ az configure --defaults workspace=$WORKSPACE_NAME
 
 # Create compute instance
 echo "Creating a compute instance with name: " $COMPUTE_INSTANCE
-az ml compute create --name ${COMPUTE_INSTANCE} --size STANDARD_DS11_V2 --type ComputeInstance 
+az ml compute create --name ${COMPUTE_INSTANCE} --size Standard_D2AS_V4 --type ComputeInstance 
 
 # Create compute cluster
 echo "Creating a compute cluster with name: " $COMPUTE_CLUSTER
-az ml compute create --name ${COMPUTE_CLUSTER} --size STANDARD_DS11_V2 --max-instances 2 --type AmlCompute 
+az ml compute create --name ${COMPUTE_CLUSTER} --size Standard_D2AS_V4 --max-instances 2 --type AmlCompute 
 
 # Create data assets
 echo "Create training data asset:"
