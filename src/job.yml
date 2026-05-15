@@ -4,10 +4,10 @@ command: >-
   python train-model-parameters.py
   --training_data ${{inputs.training_data}}
   --reg_rate ${{inputs.reg_rate}}
-inputs:
-  training_data:
-    type: <uri_file_or_uri_folder>
-    path: <azureml:data-asset-name@latest>
+ inputs:
+   training_data:
+     type: uri_file
+     path: azureml:diabetes-data@latest
   reg_rate: 0.01
 environment: azureml:AzureML-sklearn-1.0-ubuntu20.04-py38-cpu@latest
 compute: azureml:aml-cluster
