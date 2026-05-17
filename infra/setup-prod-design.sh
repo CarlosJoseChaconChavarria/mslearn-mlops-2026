@@ -8,7 +8,7 @@
 # Existing random suffix generation
 guid=$(cat /proc/sys/kernel/random/uuid)
 suffix=${guid//[-]/}
-suffix=${suffix:0:18}
+suffix=${suffix:0:6}
 
 # Dev environment naming variables
 DEV_RESOURCE_GROUP="rg-ai300-dev-${suffix}"
