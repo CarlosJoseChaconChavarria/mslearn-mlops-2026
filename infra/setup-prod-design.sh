@@ -26,7 +26,7 @@ REGISTRY_NAME="mlr-ai300-shared-${suffix}"
 COMPUTE_INSTANCE="ci${suffix}"
 COMPUTE_CLUSTER="aml-cluster"
 RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
-REGIONS=("eastus" "westus" "centralus" "northeurope" "westeurope")
+REGIONS=("eastus" "westus")
 RANDOM_REGION=${REGIONS[$RANDOM % ${#REGIONS[@]}]}
 
 # ---------------------------------------------------------------------------
