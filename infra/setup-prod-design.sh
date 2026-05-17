@@ -12,16 +12,16 @@ suffix=${suffix:0:6} # Forces safe character limits for Azure ML Registry names
 export RANDOM_REGION="eastus" # Using 'eastus' based on your successful log region
 
 # Dev environment naming variables
-export DEV_RESOURCE_GROUP="rg-ai300-dev-${suffix}"
-export DEV_WORKSPACE_NAME="mlw-ai300-dev-${suffix}"
+export DEV_RESOURCE_GROUP="rg-mlops-dev-${suffix}"
+export DEV_WORKSPACE_NAME="mlw-mlops-dev-${suffix}"
 
 # Prod environment naming variables
-export PROD_RESOURCE_GROUP="rg-ai300-prod-${suffix}"
-export PROD_WORKSPACE_NAME="mlw-ai300-prod-${suffix}"
+export PROD_RESOURCE_GROUP="rg-mlops-prod-${suffix}"
+export PROD_WORKSPACE_NAME="mlw-mlops-prod-${suffix}"
 
 # Shared registry naming variables
-export REGISTRY_RESOURCE_GROUP="rg-ai300-reg-${suffix}"
-export REGISTRY_NAME="mlrai300shared${suffix}"
+export REGISTRY_RESOURCE_GROUP="rg-mlops-reg-${suffix}"
+export REGISTRY_NAME="mlrmlopsshared${suffix}"
 
 # Core cluster constants
 export RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
