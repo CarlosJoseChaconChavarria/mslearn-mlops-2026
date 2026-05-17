@@ -3,31 +3,32 @@
 # Complete provisioning script for the "Plan and prepare an MLOps solution" lab.
 
 # ---------------------------------------------------------------------------
-# 1. Environment Variable Declarations (Added at the top of the file)
+# 1. Environment Variable Declarations
 # ---------------------------------------------------------------------------
-# Existing random suffix generation
 guid=$(cat /proc/sys/kernel/random/uuid)
 suffix=${guid//[-]/}
-suffix=${suffix:0:6}
+suffix=${suffix:0:6} # Forces safe character limits for Azure ML Registry names
+
+export RANDOM_REGION="eastus" # Using 'eastus' based on your successful log region
 
 # Dev environment naming variables
-DEV_RESOURCE_GROUP="rg-ai300-dev-${suffix}"
-DEV_WORKSPACE_NAME="mlw-ai300-dev-${suffix}"
+export DEV_RESOURCE_GROUP="rg-ai300-dev-${suffix}"
+export DEV_WORKSPACE_NAME="mlw-ai300-dev-${suffix}"
 
 # Prod environment naming variables
-PROD_RESOURCE_GROUP="rg-ai300-prod-${suffix}"
-PROD_WORKSPACE_NAME="mlw-ai300-prod-${suffix}"
+export PROD_RESOURCE_GROUP="rg-ai300-prod-${suffix}"
+export PROD_WORKSPACE_NAME="mlw-ai300-prod-${suffix}"
 
-# Shared registry naming variables (one per subscription/region)
-REGISTRY_RESOURCE_GROUP="rg-ai300-reg-${suffix}"
-REGISTRY_NAME="mlr-ai300-shared-${suffix}"
+# Shared registry naming variables
+export REGISTRY_RESOURCE_GROUP="rg-ai300-reg-${suffix}"
+export REGISTRY_NAME="mlrai300shared${suffix}"
 
-# Core cluster constants inherited from original setup.sh properties
-COMPUTE_INSTANCE="ci${suffix}"
-COMPUTE_CLUSTER="aml-cluster"
-RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
-REGIONS=("eastus" "westus")
-RANDOM_REGION=${REGIONS[$RANDOM % ${#REGIONS[@]}]}
+# Core cluster constants
+export RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
+
+echo "====================================================================="
+echo "⚙️ MLOps ARCHITECTURE SETUP RUNNING WITH SUFFIX: [ ${suffix} ]"
+echo "====================================================================="
 
 # ---------------------------------------------------------------------------
 # 2. Resource Provider Registration
@@ -36,12 +37,24 @@ echo "Registering the Machine Learning resource provider..."
 az provider register --namespace $RESOURCE_PROVIDER
 
 # ---------------------------------------------------------------------------
-# 3. Plan: Shared Registry Provisioning (Step 4 Block)
+# 🛠️ 3. Development Resource Group and Workspace Provisioning (ADDED FIX)
+# ---------------------------------------------------------------------------
+echo "Creating dev resource group: $DEV_RESOURCE_GROUP"
+az group create --name $DEV_RESOURCE_GROUP --location $RANDOM_REGION
+
+echo "Creating dev workspace instance: $DEV_WORKSPACE_NAME"
+az ml workspace create \
+    --name $DEV_WORKSPACE_NAME \
+    --resource-group $DEV_RESOURCE_GROUP \
+    --location $RANDOM_REGION
+
+# ---------------------------------------------------------------------------
+# 🌐 4. Shared Registry Provisioning
 # ---------------------------------------------------------------------------
 echo "Creating registry resource group: $REGISTRY_RESOURCE_GROUP"
 az group create --name $REGISTRY_RESOURCE_GROUP --location $RANDOM_REGION
 
-echo "Rendering registry.yml placeholders dynamically with standard local values..."
+echo "Rendering registry.yml placeholders dynamically..."
 sed \
     -e "s|REGISTRY_NAME_PLACEHOLDER|$REGISTRY_NAME|g" \
     -e "s|PRIMARY_REGION_PLACEHOLDER|$RANDOM_REGION|g" \
@@ -53,7 +66,7 @@ az ml registry create \
     --resource-group $REGISTRY_RESOURCE_GROUP
 
 # ---------------------------------------------------------------------------
-# 4. Plan: Production Resource Group and Workspace Provisioning
+# 🚀 5. Production Resource Group and Workspace Provisioning
 # ---------------------------------------------------------------------------
 echo "Creating prod resource group: $PROD_RESOURCE_GROUP"
 az group create --name $PROD_RESOURCE_GROUP --location $RANDOM_REGION
@@ -65,10 +78,10 @@ az ml workspace create \
     --location $RANDOM_REGION
 
 # ---------------------------------------------------------------------------
-# 5. Plan: Isolate Development and Production Data Assets
+# 💾 6. Isolate Development and Production Data Assets
 # ---------------------------------------------------------------------------
-# Step 5a: In the dev workspace, register the experimentation data asset
-echo "Connecting focus context to Dev Workspace to register training metrics..."
+# Step 6a: Connect to the dev workspace and register the experimentation data
+echo "Connecting focus context to Dev Workspace to register training assets..."
 az configure --defaults group=$DEV_RESOURCE_GROUP workspace=$DEV_WORKSPACE_NAME
 
 az ml data create \
@@ -76,7 +89,7 @@ az ml data create \
     --name diabetes-dev-folder \
     --path ../data/diabetes-data
 
-# Step 5b: Switch contexts to the prod workspace and register production data asset
+# Step 6b: Switch contexts to the prod workspace and register production data asset
 echo "Switching configuration context focus to Production Workspace..."
 az configure --defaults group=$PROD_RESOURCE_GROUP workspace=$PROD_WORKSPACE_NAME
 
