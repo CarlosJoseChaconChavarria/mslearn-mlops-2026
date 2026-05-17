@@ -1,0 +1,41 @@
+name: 🏗️ Provision MLOps Multi-Environment Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment to Provision'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  provision:
+    name: Provision Azure Resources
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🧾 Check out repository code
+      uses: actions/checkout@v4
+
+    - name: 🔐 Authenticate with Azure Cloud
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets::AZURE_CREDENTIALS }}
+
+    - name: 🛠️ Ensure Azure ML CLI Extension is Activated
+      run: |
+        az extension add --name ml --yes
+
+    - name: 🚀 Run Dynamic Provisioning Script
+      run: |
+        # Make the script executable and execute with the user-selected environment input
+        chmod +x infra/setup-prod-design.sh
+        ./infra/setup-prod-design.sh ${{ github.event.inputs.environment }}
