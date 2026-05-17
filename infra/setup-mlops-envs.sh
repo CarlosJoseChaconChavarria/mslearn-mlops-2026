@@ -5,100 +5,129 @@
 # each in their own resource group with isolated data assets.
 
 # ---------------------------------------------------------------------------
-# Shared variables
+# 🌍 1. Centralized Variable Definitions (Deterministic & Safe Suffixes)
 # ---------------------------------------------------------------------------
+# Create a short 6-character unique identifier to bypass resource name naming collisions
 guid=$(cat /proc/sys/kernel/random/uuid)
 suffix=${guid//[-]/}
-suffix=${suffix:0:18}
+suffix=${suffix:0:6}
 
-RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
-REGIONS=("eastus" "westus" "centralus" "northeurope" "westeurope")
-RANDOM_REGION=${REGIONS[$RANDOM % ${#REGIONS[@]}]}
+# Global Cloud Configuration
+export LOCATION="eastus" # Low-cost, highly-stable region
+export RESOURCE_PROVIDER="Microsoft.MachineLearningServices"
 
-# Dev environment
-DEV_RESOURCE_GROUP="rg-ai300-dev-${suffix}"
-DEV_WORKSPACE_NAME="mlw-ai300-dev-${suffix}"
+# Shared Azure ML Registry Environment
+export SHARED_RESOURCE_GROUP="rg-proseware-shared-${suffix}"
+export REGISTRY_NAME="regprosewareshared${suffix}"
 
-# Prod environment
-PROD_RESOURCE_GROUP="rg-ai300-prod-${suffix}"
-PROD_WORKSPACE_NAME="mlw-ai300-prod-${suffix}"
+# 🛠️ Environment 1: Development Workspace (Experimentation)
+export DEV_RESOURCE_GROUP="rg-proseware-dev-${suffix}"
+export DEV_WORKSPACE_NAME="mlw-proseware-dev-${suffix}"
+export DEV_COMPUTE_INSTANCE="ci-dev-${suffix}"
+export DEV_COMPUTE_CLUSTER="aml-cluster-dev"
 
-# Shared registry
-REGISTRY_RESOURCE_GROUP="rg-ai300-reg-${suffix}"
-REGISTRY_NAME="mlr-ai300-shared-${suffix}"
+# 🚀 Environment 2: Production Workspace ( retraining & Stable Serving)
+export PROD_RESOURCE_GROUP="rg-proseware-prod-${suffix}"
+export PROD_WORKSPACE_NAME="mlw-proseware-prod-${suffix}"
+export PROD_COMPUTE_CLUSTER="aml-cluster-prod"
 
-# Compute
-COMPUTE_INSTANCE="ci${suffix}"
-COMPUTE_CLUSTER="aml-cluster"
+echo "✅ Variables configured smoothly with deployment token suffix: [ ${suffix} ]"
 
 # ---------------------------------------------------------------------------
-# Register the Azure Machine Learning resource provider
+# 📡 2. Register Resource Providers
 # ---------------------------------------------------------------------------
-echo "Registering the Machine Learning resource provider..."
+echo "Registering the Azure Machine Learning resource provider..."
 az provider register --namespace $RESOURCE_PROVIDER
 
 # ---------------------------------------------------------------------------
-# Dev environment
+# 🛠️ 3. Development Environment Provisioning
 # ---------------------------------------------------------------------------
-echo "Creating dev resource group: $DEV_RESOURCE_GROUP"
-az group create --name $DEV_RESOURCE_GROUP --location $RANDOM_REGION
+echo "Creating DEV resource group: $DEV_RESOURCE_GROUP"
+az group create --name $DEV_RESOURCE_GROUP --location $LOCATION
 
-echo "Creating dev workspace: $DEV_WORKSPACE_NAME"
-az ml workspace create --name $DEV_WORKSPACE_NAME --resource-group $DEV_RESOURCE_GROUP
+echo "Creating DEV workspace: $DEV_WORKSPACE_NAME"
+az ml workspace create --name $DEV_WORKSPACE_NAME --resource-group $DEV_RESOURCE_GROUP --location $LOCATION
 
+# Set CLI contexts natively
 az configure --defaults group=$DEV_RESOURCE_GROUP workspace=$DEV_WORKSPACE_NAME
 
-echo "Creating compute instance for dev workspace..."
-az ml compute create --name $COMPUTE_INSTANCE --size STANDARD_DS11_V2 --type ComputeInstance
+echo "Creating low-cost compute instance for Dev workspace..."
+az ml compute create --name $DEV_COMPUTE_INSTANCE \
+                     --type ComputeInstance \
+                     --size Standard_DS2_v2
 
-echo "Creating compute cluster for dev workspace..."
-az ml compute create --name $COMPUTE_CLUSTER --size STANDARD_DS11_V2 --max-instances 2 --type AmlCompute
+echo "Creating low-cost autoscaling cluster for Dev workspace (Enforcing 0 Min instances)..."
+az ml compute create --name $DEV_COMPUTE_CLUSTER \
+                     --type AmlCompute \
+                     --size Standard_DS2_v2 \
+                     --min-instances 0 \
+                     --max-instances 2 \
+                     --idle-time-before-scale-down 900
 
-echo "Creating dev data assets..."
-az ml data create --type mltable --name "diabetes-training" --path ../data/diabetes-data
-az ml data create --type uri_file --name "diabetes-data" --path ../data/diabetes-data/diabetes.csv
-az ml data create --type uri_folder --name "diabetes-dev-folder" --path ../data/diabetes-data
+echo "Creating Development ML Data Assets..."
+az ml data create --type mltable --name "diabetes-training" --path ./data/diabetes-data
+az ml data create --type uri_file --name "diabetes-data" --path ./data/diabetes-data/diabetes.csv
+az ml data create --type uri_folder --name "diabetes-dev-folder" --path ./data/diabetes-data
 
 # ---------------------------------------------------------------------------
-# Prod environment
+# 🚀 4. Production Environment Provisioning
 # ---------------------------------------------------------------------------
-echo "Creating prod resource group: $PROD_RESOURCE_GROUP"
-az group create --name $PROD_RESOURCE_GROUP --location $RANDOM_REGION
+echo "Creating PROD resource group: $PROD_RESOURCE_GROUP"
+az group create --name $PROD_RESOURCE_GROUP --location $LOCATION
 
-echo "Creating prod workspace: $PROD_WORKSPACE_NAME"
-az ml workspace create --name $PROD_WORKSPACE_NAME --resource-group $PROD_RESOURCE_GROUP
+echo "Creating PROD workspace: $PROD_WORKSPACE_NAME"
+az ml workspace create --name $PROD_WORKSPACE_NAME --resource-group $PROD_RESOURCE_GROUP --location $LOCATION
 
 az configure --defaults group=$PROD_RESOURCE_GROUP workspace=$PROD_WORKSPACE_NAME
 
-echo "Creating prod data asset..."
+echo "Creating low-cost autoscaling cluster for Prod workspace..."
+az ml compute create --name $PROD_COMPUTE_CLUSTER \
+                     --type AmlCompute \
+                     --size Standard_DS2_v2 \
+                     --min-instances 0 \
+                     --max-instances 2 \
+                     --idle-time-before-scale-down 900
+
+echo "Creating Production ML Data Asset..."
 az ml data create \
     --type uri_folder \
     --name "diabetes-prod-folder" \
-    --path ../production/data
+    --path ./production/data
 
 # ---------------------------------------------------------------------------
-# Shared registry
+# 🌐 5. Shared Central Registry Provisioning
 # ---------------------------------------------------------------------------
-echo "Creating registry resource group: $REGISTRY_RESOURCE_GROUP"
-az group create --name $REGISTRY_RESOURCE_GROUP --location $RANDOM_REGION
+echo "Creating Shared Registry Resource Group: $SHARED_RESOURCE_GROUP"
+az group create --name $SHARED_RESOURCE_GROUP --location $LOCATION
 
-echo "Rendering registry.yml with dynamic values..."
-sed \
-    -e "s|REGISTRY_NAME_PLACEHOLDER|$REGISTRY_NAME|g" \
-    -e "s|PRIMARY_REGION_PLACEHOLDER|$RANDOM_REGION|g" \
-    registry.yml > registry.generated.yml
+echo "Rendering registry.yml dynamically with standard low-cost variables..."
+cat <<EOF > infra/registry.generated.yml
+\$schema: https://azuremlschemas.azureedge.net/latest/registry.schema.json
+name: ${REGISTRY_NAME}
+location: ${LOCATION}
+description: Central shared registry for Proseware multi-disease models.
+tags:
+  tier: shared-assets
+  billing: low-cost
+EOF
 
-echo "Creating shared Azure Machine Learning registry: $REGISTRY_NAME"
+echo "Creating central Azure Machine Learning registry: $REGISTRY_NAME"
 az ml registry create \
-    --file registry.generated.yml \
-    --resource-group $REGISTRY_RESOURCE_GROUP
-    
+    --file infra/registry.generated.yml \
+    --resource-group $SHARED_RESOURCE_GROUP
 
 # ---------------------------------------------------------------------------
-# Summary
+# 📊 6. Output Deployment Summary
 # ---------------------------------------------------------------------------
-echo ""
-echo "Provisioning complete."
-echo "  Dev workspace:   $DEV_WORKSPACE_NAME  ($DEV_RESOURCE_GROUP)"
-echo "  Prod workspace:  $PROD_WORKSPACE_NAME  ($PROD_RESOURCE_GROUP)"
-echo "  Shared registry: $REGISTRY_NAME  ($REGISTRY_RESOURCE_GROUP)"
+echo "====================================================================="
+echo "💥 PROVISIONING INFRASTRUCTURE COMPLETE"
+echo "====================================================================="
+echo "  Dev Environment Workspace  : $DEV_WORKSPACE_NAME ($DEV_RESOURCE_GROUP)"
+echo "  Prod Environment Workspace : $PROD_WORKSPACE_NAME ($PROD_RESOURCE_GROUP)"
+echo "  Central Shared Registry    : $REGISTRY_NAME ($SHARED_RESOURCE_GROUP)"
+echo "====================================================================="
+echo "⚠️ ANTI-BILLING ADVICE: When finished with this session, execute:"
+echo "   az group delete --name $DEV_RESOURCE_GROUP --yes --no-wait"
+echo "   az group delete --name $PROD_RESOURCE_GROUP --yes --no-wait"
+echo "   az group delete --name $SHARED_RESOURCE_GROUP --yes --no-wait"
+echo "====================================================================="
