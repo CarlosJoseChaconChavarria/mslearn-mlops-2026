@@ -1,50 +1,81 @@
-name: 🏗️ Provision MLOps Multi-Environment Infrastructure
+# ---------------------------------------------------------------------------
+# 🏷️ WORKFLOW IDENTITY
+# This is the name displayed in the "Actions" tab of your GitHub repository.
+# ---------------------------------------------------------------------------
+name: Provision MLOps Multi-Environment Infrastructure
 
+# ---------------------------------------------------------------------------
+# ⚡ TRIGGER MECHANISM
+# "workflow_dispatch" enables an on-demand, manual button inside the GitHub UI.
+# It allows team members to run the infrastructure code without pushing commits.
+# ---------------------------------------------------------------------------
 on:
   workflow_dispatch:
     inputs:
+      # This establishes an input variable named "environment" to catch user selection
       environment:
         description: 'Target Environment to Provision'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
+        required: true       # The user cannot leave this blank
+        default: 'dev'       # Pre-selects 'dev' automatically as a sensible default
+        type: choice         # Transforms the text box into a strict dropdown menu
+        options:             # The specific menu choices available to click
           - dev
           - prod
           - both
 
+# ---------------------------------------------------------------------------
+# 🛡️ SECURITY & ACCESS CONTROLS
+# Gives the virtual runner machine the minimal required permissions to do its job.
+# ---------------------------------------------------------------------------
 permissions:
-  id-token: write
-  contents: read
+  id-token: write    # Allows secure connection token handshakes with Azure AD
+  contents: read     # Allows the workflow runner to safely read your repository code
 
+# ---------------------------------------------------------------------------
+# 🏗️ COMPUTE PIPELINE (JOBS)
+# Sets up the remote computing box where the commands will execute.
+# ---------------------------------------------------------------------------
 jobs:
   provision:
     name: Provision Azure Resources
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # Spins up a fresh Microsoft-hosted Linux runner
     
     steps:
+    # STEP 1: Downloads a copy of your codebase into the runner's memory workspace
     - name: 🧾 Check out repository code
       uses: actions/checkout@v4
 
+    # STEP 2: Authenticates with Azure using the secret JSON key you set in your repo settings
     - name: 🔐 Authenticate with Azure Cloud
       uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        creds: ${{ secrets.AZURE_CREDENTIALS }} # Injects your secure Azure credentials block safely
 
+    # STEP 3: Ensures the specialized Azure CLI Machine Learning (v2) extension is active
     - name: 🛠️ Ensure Azure ML CLI Extension is Activated
       run: |
         az extension add --name ml --yes
 
+    # STEP 4: Runs the intelligence fork logic to coordinate script processing
     - name: 🚀 Run Dynamic Provisioning Script
       run: |
+        # Gives the system execute permissions (+x) on your custom shell script
         chmod +x infra/setup-prod-design.sh
         
-        # Check what option the user picked in the menu dropdown
+        # BASH FORK LOGIC: Evaluates the specific text option you selected in the UI dropdown
         if [ "${{ github.event.inputs.environment }}" = "both" ]; then
+            
+            # ROUTE A: If you click "both", execute the file twice back-to-back 
+            # while changing the input parameter token sequentially.
             echo "🔄 Provisioning BOTH development and production architectures..."
             ./infra/setup-prod-design.sh dev
             ./infra/setup-prod-design.sh prod
+            
         else
+            
+            # ROUTE B: If you click "dev" or "prod", forward that exact word 
+            # straight to your script as its target argument variable.
             echo "🚀 Provisioning single targeted environment: [ ${{ github.event.inputs.environment }} ]"
             ./infra/setup-prod-design.sh ${{ github.event.inputs.environment }}
+            
         fi
