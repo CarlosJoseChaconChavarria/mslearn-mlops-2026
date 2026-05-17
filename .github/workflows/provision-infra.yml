@@ -11,6 +11,7 @@ on:
         options:
           - dev
           - prod
+          - both
 
 permissions:
   id-token: write
@@ -28,7 +29,7 @@ jobs:
     - name: 🔐 Authenticate with Azure Cloud
       uses: azure/login@v2
       with:
-        creds: ${{ secrets::AZURE_CREDENTIALS }}
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: 🛠️ Ensure Azure ML CLI Extension is Activated
       run: |
@@ -36,6 +37,14 @@ jobs:
 
     - name: 🚀 Run Dynamic Provisioning Script
       run: |
-        # Make the script executable and execute with the user-selected environment input
         chmod +x infra/setup-prod-design.sh
-        ./infra/setup-prod-design.sh ${{ github.event.inputs.environment }}
+        
+        # Check what option the user picked in the menu dropdown
+        if [ "${{ github.event.inputs.environment }}" = "both" ]; then
+            echo "🔄 Provisioning BOTH development and production architectures..."
+            ./infra/setup-prod-design.sh dev
+            ./infra/setup-prod-design.sh prod
+        else
+            echo "🚀 Provisioning single targeted environment: [ ${{ github.event.inputs.environment }} ]"
+            ./infra/setup-prod-design.sh ${{ github.event.inputs.environment }}
+        fi
