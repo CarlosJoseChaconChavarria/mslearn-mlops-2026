@@ -38,4 +38,8 @@ az ml compute create --name ${COMPUTE_CLUSTER} --size Standard_D2AS_V4 --max-ins
 # Create data assets
 echo "Create training data asset:"
 az ml data create --type mltable --name "diabetes-training" --path ../data/diabetes-data
-az ml data create --type uri_file --name "diabetes-data" --path ../data/diabetes-data/diabetes.csv 
+az ml data create --type uri_file --name "diabetes-data" --path ../data/diabetes-data/diabetes.csv
+
+# add the following lines to create folder data assets that point to the dev and prod data folders in this repo:
+az ml data create --type uri_folder --name "diabetes-dev-folder" --path ../experimentation/data
+az ml data create --type uri_folder --name "diabetes-prod-folder" --path ../production/data
