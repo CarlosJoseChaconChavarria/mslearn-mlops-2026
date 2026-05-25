@@ -6,6 +6,16 @@ on:
       - 'v1'
       - 'v2'
       - 'v3'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Agent version to deploy'
+        required: true
+        type: choice
+        options:
+          - v1
+          - v2
+          - v3
 
 permissions:
   contents: read
@@ -40,6 +50,6 @@ jobs:
           AGENT_NAME: trail-guide
           MODEL_NAME: gpt-4.1
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
           echo "Deploying Trail Guide Agent $VERSION"
           python src/agents/trail_guide_agent/trail_guide_agent.py --version "$VERSION"
